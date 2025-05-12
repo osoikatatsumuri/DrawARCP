@@ -1,4 +1,4 @@
-package com.example.drawarcp.ui.theme
+package com.example.drawarcp.presentation.components
 
 import androidx.compose.ui.graphics.Color
 
