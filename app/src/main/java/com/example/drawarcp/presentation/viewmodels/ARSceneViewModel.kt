@@ -1,27 +1,24 @@
 package com.example.drawarcp.presentation.viewmodels
 
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.util.Log
+import androidx.compose.ui.graphics.Paint
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.drawarcp.data.models.ARNodeData
 import com.example.drawarcp.data.ar.ARNodeProvider
 import com.example.drawarcp.data.ar.transformation.TransformationType
 import com.example.drawarcp.domain.usecases.AddNodeUseCase
 import com.example.drawarcp.domain.usecases.TransformNodeUseCase
+import com.example.drawarcp.domain.utils.BitmapProcessor
 import com.example.drawarcp.domain.utils.NodeMapper
 import com.example.drawarcp.presentation.uistate.ARSceneUIState
-import com.example.drawarcp.presentation.uistate.NodeUIState
 import com.google.android.filament.Engine
 import com.google.ar.core.Frame
-import com.google.ar.core.Pose
 import com.google.ar.core.Session
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dev.romainguy.kotlin.math.Float3
-import dev.romainguy.kotlin.math.dot
-import dev.romainguy.kotlin.math.normalize
-import dev.romainguy.kotlin.math.slerp
-import io.github.sceneview.collision.Quaternion
 import io.github.sceneview.loaders.MaterialLoader
+import io.github.sceneview.node.ImageNode
 import jakarta.inject.Inject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,7 +27,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlin.reflect.typeOf
 
 @HiltViewModel
 class ARSceneViewModel @Inject constructor(
@@ -53,7 +49,7 @@ class ARSceneViewModel @Inject constructor(
         nodeId: String,
         type: TransformationType<T>,
         params: T
-    ) = viewModelScope.launch(Dispatchers.IO) {
+    ) = viewModelScope.launch(Dispatchers.Default) {
 
         val mapper = nodeMapper ?: throw IllegalStateException("AR scene dependencies is not initialized")
 
@@ -65,24 +61,41 @@ class ARSceneViewModel @Inject constructor(
                 val domainNode = mapper.mapToDomainLayer(updatedNode)
                 val uiNode = mapper.mapToUILayer(domainNode)
 
-                withContext(Dispatchers.Main) {
-                    _sceneState.update { sceneState ->
-                        sceneState.nodesItems.find { it.id == updatedNode.id }?.apply {
-                            when (type) {
-                                TransformationType.SCALE -> node.scale = domainNode.scale
-                                TransformationType.OPACITY -> TODO()
-                                TransformationType.ROTATE -> {
-                                    node.childNodes.first().quaternion = uiNode.node.childNodes.first().quaternion
+                _sceneState.update { sceneState ->
+                    sceneState.nodesItems.find { it.id == updatedNode.id }?.apply {
+                        when (type) {
+                            TransformationType.SCALE -> {
+                                withContext(Dispatchers.Main) {
+                                    node.scale = domainNode.scale
+                                    scale = domainNode.scale
                                 }
                             }
-                        }
+                            TransformationType.OPACITY -> {
+                                val bitmap = withContext(Dispatchers.IO) {
+                                    BitmapProcessor.adjustOpacity((uiNode.node.childNodes.first() as ImageNode).bitmap, domainNode.opacity)
+                                }
 
-                        sceneState
+                                withContext(Dispatchers.Main) {
+                                    opacity = domainNode.opacity
+                                    (node.childNodes.first() as ImageNode).bitmap = bitmap
+                                }
+                            }
+                            TransformationType.ROTATE -> {
+
+                                withContext(Dispatchers.Main) {
+                                    rotationAngles = domainNode.rotationAngles
+                                    node.childNodes.first().quaternion = uiNode.node.childNodes.first().quaternion
+                                }
+
+                            }
+                        }
                     }
+
+                    sceneState
                 }
             }
             .onFailure { exception ->
-                Log.d("!!!", exception.toString())
+                Log.d("AR", exception.toString())
             }
     }
 

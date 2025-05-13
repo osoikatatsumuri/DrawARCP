@@ -20,25 +20,26 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collection.mutableVectorOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.drawarcp.data.ar.transformation.TransformationType
+import com.example.drawarcp.presentation.uistate.NodeUIState
 import com.example.drawarcp.presentation.viewmodels.ARSceneViewModel
+import com.example.drawarcp.presentation.viewmodels.PermissionsViewModel
 import com.google.ar.core.CameraConfig
 import com.google.ar.core.CameraConfigFilter
 import com.google.ar.core.Config
@@ -46,7 +47,6 @@ import com.google.ar.core.Frame
 import com.google.ar.core.Session
 import com.google.ar.core.TrackingState
 import dev.romainguy.kotlin.math.Float3
-import dev.romainguy.kotlin.math.Quaternion
 import io.github.sceneview.ar.ARScene
 import io.github.sceneview.ar.arcore.isTracking
 import io.github.sceneview.ar.rememberARCameraNode
@@ -58,23 +58,24 @@ import io.github.sceneview.rememberMaterialLoader
 import io.github.sceneview.rememberModelLoader
 import io.github.sceneview.rememberOnGestureListener
 import io.github.sceneview.rememberView
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.debounce
 import java.util.EnumSet
-import java.util.logging.Logger
 
 @Composable
-fun ARSceneScreen(viewModel: ARSceneViewModel) {
+fun ARSceneScreen(viewModel: ARSceneViewModel, permissionsViewModel: PermissionsViewModel) {
+    val context = LocalContext.current
+
     val engine = rememberEngine()
     val modelLoader = rememberModelLoader(engine)
     val materialLoader = rememberMaterialLoader(engine)
     val arCameraStream = rememberARCameraStream(materialLoader = materialLoader)
     val arCameraNode = rememberARCameraNode(engine = engine)
     val view = rememberView(engine = engine)
-
     var arSession: Session? by remember { mutableStateOf(null) }
     var frame by remember { mutableStateOf<Frame?>(null) }
-
     var isDepthModeSupported by remember { mutableStateOf(false) }
-    val context = LocalContext.current
 
     val widthPixels = context.resources.displayMetrics.widthPixels
     val heightPixels = context.resources.displayMetrics.heightPixels
@@ -83,9 +84,8 @@ fun ARSceneScreen(viewModel: ARSceneViewModel) {
     var sheetVisible by remember { mutableStateOf(false) }
     var selectedNodeId by remember { mutableStateOf<String?>(null) }
 
-    val childNodes by remember(sceneState.nodesItems) {
-        mutableStateOf(sceneState.nodesItems.map {it.node})
-    }
+    val childNodes = sceneState.nodesItems.map { it.node }
+
 
     LaunchedEffect(arSession) {
         arSession?.let {
@@ -190,13 +190,13 @@ fun ARSceneScreen(viewModel: ARSceneViewModel) {
 
             if (sheetVisible && selectedNodeId != null) {
                 TransformNodeSheet(
-                    nodeId = selectedNodeId!!,
+                    nodeSelected = sceneState.nodesItems.find { it.id == selectedNodeId }!!,
                     onDismiss = { sheetVisible = false },
                     onScaleChange = { scale ->
                         viewModel.applyTransformation(
                             nodeId = selectedNodeId!!,
                             type = TransformationType.SCALE,
-                            params = scale
+                            params = Float3(scale, scale, scale)
                         )
                     },
                     onRotationChange = { eulerAngles ->
@@ -206,8 +206,12 @@ fun ARSceneScreen(viewModel: ARSceneViewModel) {
                             params = eulerAngles
                         )
                     },
-                    onOpacityChange = {
-
+                    onOpacityChange = { alphaChannel ->
+                        viewModel.applyTransformation(
+                            nodeId = selectedNodeId!!,
+                            type = TransformationType.OPACITY,
+                            params = alphaChannel
+                        )
                     },
                 )
             }
@@ -240,26 +244,30 @@ fun LocalOrientationAxisChip(rotationAxis: Pair<String, Vector3>, onSelected: ()
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, FlowPreview::class)
 @Composable
 fun TransformNodeSheet(
-    nodeId: String,
     onDismiss: () -> Unit,
+    nodeSelected: NodeUIState,
     onScaleChange: (Float) -> Unit,
     onOpacityChange: (Int) -> Unit,
     onRotationChange: (Float3) -> Unit,
 ) {
-    var scale by remember { mutableFloatStateOf(1f) }
 
-    var rotations = remember {
-        mutableStateMapOf(
-            "X" to Pair(0f, Float3(1f, 0f, 0f)),
-            "Y" to Pair(0f, Float3(0f, 1f, 0f)),
-            "Z" to Pair(0f, Float3(0f, 0f, 1f))
-        )
+    var scale by remember(nodeSelected.id) { mutableFloatStateOf(nodeSelected.scale.x) }
+    var opacity by remember(nodeSelected.id) { mutableIntStateOf(nodeSelected.opacity) }
+
+    var rotationAngles by remember(nodeSelected.id) { mutableStateOf(nodeSelected.rotationAngles) }
+
+    val debouncedOpacity by rememberUpdatedState(opacity)
+
+    LaunchedEffect(debouncedOpacity) {
+        snapshotFlow { debouncedOpacity }
+            .debounce(100)
+            .collectLatest {
+                onOpacityChange(it)
+            }
     }
-
-    var opacity by remember { mutableIntStateOf(255) }
 
     var selectedAxis by remember {mutableStateOf(Pair("X", Vector3(1f, 0f, 0f)))}
 
@@ -293,12 +301,33 @@ fun TransformNodeSheet(
                 valueRange = 0.1f..3f
             )
 
-            Text("Поворот: ${"%.0f".format(rotations[selectedAxis.first]!!.first)}°")
+            Text(
+                "Rotation: ${
+                    "%.0f".format(
+                        rotationAngles.toFloatArray()[ when (selectedAxis.first) {
+                            "X" -> 0
+                            "Y" -> 1
+                            else -> 2
+                        } ]
+                    )
+                }° on ${selectedAxis.first}"
+            )
+
             Slider(
-                value = rotations[selectedAxis.first]!!.first,
-                onValueChange = {
-                    rotations[selectedAxis.first] = Pair(it, rotations[selectedAxis.first]!!.second)
-                    onRotationChange(rotations.values.map { it.first }.toFloatArray().toFloat3())
+                value = rotationAngles.toFloatArray()[ when (selectedAxis.first) {
+                    "X" -> 0
+                    "Y" -> 1
+                    else -> 2
+                } ],
+                onValueChange = { newValue ->
+                    val (x, y, z) = rotationAngles.toFloatArray()
+                    val updated = when (selectedAxis.first) {
+                        "X" -> Float3(newValue, y, z)
+                        "Y" -> Float3(x, newValue, z)
+                        else -> Float3(x, y, newValue)
+                    }
+                    rotationAngles = updated
+                    onRotationChange(updated)
                 },
                 valueRange = 0f..360f
             )
@@ -308,7 +337,6 @@ fun TransformNodeSheet(
                 value = opacity.toFloat(),
                 onValueChange = {
                     opacity = it.toInt()
-                    onOpacityChange(it.toInt())
                 },
                 valueRange = 0f..255f
             )

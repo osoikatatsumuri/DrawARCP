@@ -1,11 +1,13 @@
 package com.example.drawarcp
 
 import android.content.Context
+import com.example.drawarcp.data.PermissionRepositoryImpl
 import com.example.drawarcp.data.ar.ARNodeProvider
 import com.example.drawarcp.data.ar.ARPlacementController
 import com.example.drawarcp.domain.interfaces.IARPlacementController
-import com.example.drawarcp.domain.interfaces.INodeProvider
+import com.example.drawarcp.domain.interfaces.IPermissionsRepository
 import com.example.drawarcp.domain.usecases.AddNodeUseCase
+import com.example.drawarcp.domain.usecases.GetPermissionDataUseCase
 import com.example.drawarcp.domain.usecases.TransformNodeUseCase
 import com.google.android.filament.Engine
 import dagger.Module
@@ -52,15 +54,28 @@ object ARModule {
 
     @Provides
     @Singleton
-    fun provideAddNodeUseCase(placementController: IARPlacementController) = AddNodeUseCase(placementController)
+    fun provideAddNodeUseCase(placementController: IARPlacementController) =
+        AddNodeUseCase(placementController)
 
     @Provides
     @Singleton
-    fun provideTransformNodeUseCase(provider: ARNodeProvider) = TransformNodeUseCase(provider)
+    fun provideTransformNodeUseCase(provider: ARNodeProvider) =
+        TransformNodeUseCase(provider)
 
     @Provides
     @Singleton
-    fun provideARPlacementController(): IARPlacementController = ARPlacementController()
+    fun provideGetPermissionDataUseCase(repository: IPermissionsRepository) =
+        GetPermissionDataUseCase(repository)
+
+    @Provides
+    @Singleton
+    fun providePermissionRepository(): IPermissionsRepository = PermissionRepositoryImpl()
+
+
+    @Provides
+    @Singleton
+    fun provideARPlacementController(): IARPlacementController =
+        ARPlacementController()
 }
 
 @Module

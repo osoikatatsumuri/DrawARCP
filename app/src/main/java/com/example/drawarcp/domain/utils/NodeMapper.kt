@@ -21,7 +21,7 @@ class NodeMapper @Inject constructor(private val session: Session, private val e
             id = domainNode.id,
             pose = domainNode.pose,
             imageFileLocation = domainNode.imageFileLocation,
-            scale = domainNode.scale.x,
+            scale = domainNode.scale,
             initialWorldQuaternion = domainNode.initialWorldQuaternion,
             localAngles = domainNode.rotationAngles,
             normal = domainNode.normal.toVector3(),
@@ -34,7 +34,7 @@ class NodeMapper @Inject constructor(private val session: Session, private val e
             id = node.id,
             pose = node.pose,
             imageFileLocation = node.imageFileLocation,
-            scale = Float3(node.scale, node.scale, node.scale),
+            scale = node.scale,
             initialWorldQuaternion = node.initialWorldQuaternion,
             rotationAngles = node.localAngles,
             normal = node.normal.toFloat3(),
@@ -58,6 +58,12 @@ class NodeMapper @Inject constructor(private val session: Session, private val e
 
         anchorNode.addChildNode(imageNode)
 
-        return NodeUIState(id = node.id, node = anchorNode)
+        return NodeUIState(
+            id = node.id,
+            node = anchorNode,
+            scale = node.scale,
+            rotationAngles = node.rotationAngles,
+            opacity = node.opacity,
+            )
     }
 }

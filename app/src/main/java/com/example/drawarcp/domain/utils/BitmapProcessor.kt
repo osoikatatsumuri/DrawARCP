@@ -11,8 +11,10 @@ class BitmapProcessor {
 
             for (y in 0 until rgbImage.height) {
                 for (x in 0 until rgbImage.width) {
-                    val argbPixel = rgbImage[x, y]
-                    val newPixel = (argbPixel and 0x00FFFFFF) or (alpha shl 24)
+                    val pixel = rgbImage[x, y]
+                    val originalAlpha = (pixel shr 24) and 0xFF
+                    val newAlpha = (alpha * originalAlpha) / 255
+                    val newPixel = (pixel and 0x00FFFFFF) or (newAlpha shl 24)
                     rgbImage[x, y] = newPixel
                 }
             }

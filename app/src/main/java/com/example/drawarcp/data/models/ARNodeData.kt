@@ -9,7 +9,7 @@ data class ARNodeData(
     val id: String,
     val pose: Pose,
     val imageFileLocation: String,
-    val scale: Float,
+    val scale: Float3,
     val localAngles: Float3,
     val initialWorldQuaternion: Quaternion,
     val normal: Vector3,
