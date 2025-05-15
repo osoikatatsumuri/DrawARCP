@@ -13,17 +13,20 @@ import com.example.drawarcp.domain.usecases.TransformNodeUseCase
 import com.example.drawarcp.domain.utils.BitmapProcessor
 import com.example.drawarcp.domain.utils.NodeMapper
 import com.example.drawarcp.presentation.uistate.ARSceneUIState
+import com.example.drawarcp.presentation.uistate.nodes.AnchorNodeUIState
 import com.google.android.filament.Engine
 import com.google.ar.core.Frame
 import com.google.ar.core.Session
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.sceneview.loaders.MaterialLoader
 import io.github.sceneview.node.ImageNode
+import io.github.sceneview.node.Node
 import jakarta.inject.Inject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.forEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -62,7 +65,7 @@ class ARSceneViewModel @Inject constructor(
                 val uiNode = mapper.mapToUILayer(domainNode)
 
                 _sceneState.update { sceneState ->
-                    sceneState.nodesItems.find { it.id == updatedNode.id }?.apply {
+                    (sceneState.nodesItems.find {it.id == updatedNode.id } as AnchorNodeUIState).apply {
                         when (type) {
                             TransformationType.SCALE -> {
                                 withContext(Dispatchers.Main) {
@@ -81,7 +84,6 @@ class ARSceneViewModel @Inject constructor(
                                 }
                             }
                             TransformationType.ROTATE -> {
-
                                 withContext(Dispatchers.Main) {
                                     rotationAngles = domainNode.rotationAngles
                                     node.childNodes.first().quaternion = uiNode.node.childNodes.first().quaternion
@@ -99,7 +101,15 @@ class ARSceneViewModel @Inject constructor(
             }
     }
 
-    fun addNode(frame: Frame?, x: Float, y: Float, imageFileLocation: String = "images/rabbit.png") {
+    fun addNode(node: Node) {
+        viewModelScope.launch {
+            _sceneState.update { sceneState ->
+                sceneState.copy(nodesItems = sceneState.nodesItems )
+            }
+        }
+    }
+
+    fun addNode(frame: Frame?, x: Float, y: Float, imageFileLocation: String = "images/images.jpg") {
         viewModelScope.launch {
             if (frame == null) {
                 return@launch
@@ -125,5 +135,9 @@ class ARSceneViewModel @Inject constructor(
                     }
                 }
         }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
     }
 }

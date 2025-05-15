@@ -1,45 +1,65 @@
 package com.example.drawarcp.presentation.screens
 
 import android.util.Log
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.Done
+import androidx.compose.material3.BottomAppBar
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FabPosition
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.drawarcp.data.ar.transformation.TransformationType
-import com.example.drawarcp.presentation.uistate.NodeUIState
+import com.example.drawarcp.presentation.uistate.nodes.AnchorNodeUIState
+import com.example.drawarcp.presentation.uistate.nodes.INodeUIState
+import com.example.drawarcp.presentation.uistate.nodes.NodeUIState
 import com.example.drawarcp.presentation.viewmodels.ARSceneViewModel
 import com.example.drawarcp.presentation.viewmodels.PermissionsViewModel
+import com.google.android.filament.MaterialInstance
+import com.google.ar.core.Anchor
 import com.google.ar.core.CameraConfig
 import com.google.ar.core.CameraConfigFilter
 import com.google.ar.core.Config
@@ -52,7 +72,7 @@ import io.github.sceneview.ar.arcore.isTracking
 import io.github.sceneview.ar.rememberARCameraNode
 import io.github.sceneview.ar.rememberARCameraStream
 import io.github.sceneview.collision.Vector3
-import io.github.sceneview.math.toFloat3
+import io.github.sceneview.node.PlaneNode
 import io.github.sceneview.rememberEngine
 import io.github.sceneview.rememberMaterialLoader
 import io.github.sceneview.rememberModelLoader
@@ -71,6 +91,7 @@ fun ARSceneScreen(viewModel: ARSceneViewModel, permissionsViewModel: Permissions
     val modelLoader = rememberModelLoader(engine)
     val materialLoader = rememberMaterialLoader(engine)
     val arCameraStream = rememberARCameraStream(materialLoader = materialLoader)
+
     val arCameraNode = rememberARCameraNode(engine = engine)
     val view = rememberView(engine = engine)
     var arSession: Session? by remember { mutableStateOf(null) }
@@ -86,7 +107,6 @@ fun ARSceneScreen(viewModel: ARSceneViewModel, permissionsViewModel: Permissions
 
     val childNodes = sceneState.nodesItems.map { it.node }
 
-
     LaunchedEffect(arSession) {
         arSession?.let {
             viewModel.initARDependencies(
@@ -99,23 +119,56 @@ fun ARSceneScreen(viewModel: ARSceneViewModel, permissionsViewModel: Permissions
 
 
     Scaffold(
-        floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = {
-                    val selectedFrame = frame
-
-                    if (selectedFrame?.camera?.isTracking == false) {
-                        return@ExtendedFloatingActionButton
+        bottomBar = {
+            BottomAppBar(
+                containerColor = Color.White.copy(alpha = 0.95f),
+                tonalElevation = 4.dp,
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextButton(
+                        onClick = {
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.textButtonColors(
+                            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                            contentColor = MaterialTheme.colorScheme.primary
+                        ),
+                        modifier = Modifier
+                            .height(48.dp)
+                            .weight(1f)
+                    ) {
+                        Text(text = "Добавить плоскость", style = MaterialTheme.typography.bodyMedium)
                     }
 
-                    viewModel.addNode(frame = selectedFrame, x = widthPixels / 2f, y = heightPixels / 2f)
-                },
-                modifier = Modifier.padding(16.dp)
-            ) {
-                Text("Add Node")
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    TextButton(
+                        onClick = {
+                            if (frame?.camera?.trackingState != TrackingState.TRACKING) {
+                                return@TextButton
+                            }
+
+                            viewModel.addNode(frame, widthPixels / 2f, heightPixels / 2f)
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.textButtonColors(
+                            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                            contentColor = MaterialTheme.colorScheme.primary
+                        ),
+                        modifier = Modifier
+                            .height(48.dp)
+                            .weight(1f)
+                    ) {
+                        Text(text = "Добавить изображение", style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
             }
         },
-        floatingActionButtonPosition = FabPosition.End
     ) { padding ->
         Box(
             modifier = Modifier
@@ -126,6 +179,7 @@ fun ARSceneScreen(viewModel: ARSceneViewModel, permissionsViewModel: Permissions
                 modifier = Modifier.fillMaxSize(),
                 engine = engine,
                 modelLoader = modelLoader,
+                planeRenderer = true,
                 onSessionUpdated = { mSession, updatedFrame ->
                     if (updatedFrame.camera.trackingState == TrackingState.TRACKING) {
                         frame = updatedFrame
@@ -155,16 +209,13 @@ fun ARSceneScreen(viewModel: ARSceneViewModel, permissionsViewModel: Permissions
                     session.cameraConfig
                 },
                 sessionConfiguration = { session, config ->
-                    config.focusMode = Config.FocusMode.AUTO
 
                     isDepthModeSupported = session.isDepthModeSupported(Config.DepthMode.AUTOMATIC)
 
                     if (isDepthModeSupported) {
-                        Log.d("AR", "DepthMode supported. Activating it...")
-
-                        config.apply { depthMode = Config.DepthMode.AUTOMATIC }
+                        config.depthMode = Config.DepthMode.AUTOMATIC
                     } else {
-                        config.apply { depthMode = Config.DepthMode.DISABLED }
+                        config.depthMode = Config.DepthMode.DISABLED
                     }
 
                     if (session.isImageStabilizationModeSupported(Config.ImageStabilizationMode.EIS)) {
@@ -174,6 +225,12 @@ fun ARSceneScreen(viewModel: ARSceneViewModel, permissionsViewModel: Permissions
                     }
 
                     config.instantPlacementMode = Config.InstantPlacementMode.DISABLED
+
+                    config.updateMode = Config.UpdateMode.LATEST_CAMERA_IMAGE
+
+                    config.planeFindingMode = Config.PlaneFindingMode.HORIZONTAL_AND_VERTICAL
+
+                    config.updateMode = Config.UpdateMode.BLOCKING
 
                     config.lightEstimationMode =
                         Config.LightEstimationMode.ENVIRONMENTAL_HDR
@@ -186,11 +243,17 @@ fun ARSceneScreen(viewModel: ARSceneViewModel, permissionsViewModel: Permissions
                     }
                 ),
                 childNodes = childNodes,
+                onSessionPaused = { session ->
+                    session.apply {
+                        pause()
+                        resume()
+                    }
+                },
             )
 
             if (sheetVisible && selectedNodeId != null) {
                 TransformNodeSheet(
-                    nodeSelected = sceneState.nodesItems.find { it.id == selectedNodeId }!!,
+                    nodeSelected = sceneState.nodesItems.find { it.id == selectedNodeId } as AnchorNodeUIState,
                     onDismiss = { sheetVisible = false },
                     onScaleChange = { scale ->
                         viewModel.applyTransformation(
@@ -248,7 +311,7 @@ fun LocalOrientationAxisChip(rotationAxis: Pair<String, Vector3>, onSelected: ()
 @Composable
 fun TransformNodeSheet(
     onDismiss: () -> Unit,
-    nodeSelected: NodeUIState,
+    nodeSelected: AnchorNodeUIState,
     onScaleChange: (Float) -> Unit,
     onOpacityChange: (Int) -> Unit,
     onRotationChange: (Float3) -> Unit,

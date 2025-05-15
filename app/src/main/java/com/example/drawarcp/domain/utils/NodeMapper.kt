@@ -2,12 +2,12 @@ package com.example.drawarcp.domain.utils
 
 import com.example.drawarcp.data.models.ARNodeData
 import com.example.drawarcp.domain.models.NodeDomainData
-import com.example.drawarcp.presentation.uistate.NodeUIState
+import com.example.drawarcp.presentation.uistate.nodes.AnchorNodeUIState
+import com.example.drawarcp.presentation.uistate.nodes.INodeUIState
+import com.example.drawarcp.presentation.uistate.nodes.NodeUIState
 import com.google.android.filament.Engine
 import com.google.ar.core.Session
-import dev.romainguy.kotlin.math.Float3
 import dev.romainguy.kotlin.math.Quaternion
-import dev.romainguy.kotlin.math.normalize
 import io.github.sceneview.ar.node.AnchorNode
 import io.github.sceneview.loaders.MaterialLoader
 import io.github.sceneview.math.toFloat3
@@ -42,7 +42,7 @@ class NodeMapper @Inject constructor(private val session: Session, private val e
         )
     }
 
-    fun mapToUILayer(node: NodeDomainData): NodeUIState {
+    fun mapToUILayer(node: NodeDomainData): AnchorNodeUIState {
         val anchor = session.createAnchor(node.pose)
 
         val anchorNode = AnchorNode(engine = engine, anchor = anchor)
@@ -58,12 +58,12 @@ class NodeMapper @Inject constructor(private val session: Session, private val e
 
         anchorNode.addChildNode(imageNode)
 
-        return NodeUIState(
+        return AnchorNodeUIState(
             id = node.id,
             node = anchorNode,
             scale = node.scale,
             rotationAngles = node.rotationAngles,
             opacity = node.opacity,
-            )
+        )
     }
 }
