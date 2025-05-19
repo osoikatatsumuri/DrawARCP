@@ -1,6 +1,7 @@
 package com.example.drawarcp.data.ar
 
 import com.example.drawarcp.data.models.ARNodeData
+import com.example.drawarcp.data.models.ImageSource
 import com.example.drawarcp.domain.interfaces.IARPlacementController
 import com.google.android.filament.utils.Ray
 import com.google.ar.core.DepthPoint
@@ -26,9 +27,8 @@ class ARPlacementController: IARPlacementController {
         frame: Frame,
         x: Float,
         y: Float,
-        imageFileLocation: String,
+        imageSource: ImageSource,
     ): Result<ARNodeData> {
-
         val hit = frame.hitTest(x, y).firstOrNull {
             val trackable = it.trackable
             trackable is Plane || trackable is DepthPoint
@@ -52,14 +52,14 @@ class ARPlacementController: IARPlacementController {
 
             io.github.sceneview.collision.Quaternion.lookRotation(planeForward, planeUp)
         } else {
-           io.github.sceneview.collision.Quaternion.lookRotation(normalVector.negated(), Vector3.forward() )
+           io.github.sceneview.collision.Quaternion.lookRotation(normalVector.negated(), Vector3.forward())
         }
 
         return Result.success(
             ARNodeData(
                 id = UUID.randomUUID().toString(),
                 pose = pose,
-                imageFileLocation = imageFileLocation,
+                imageSource = imageSource,
                 scale = Float3(0.8f, 0.8f, 0.8f),
                 initialWorldQuaternion = Quaternion(quaternion.x, quaternion.y, quaternion.z, quaternion.w),
                 localAngles = Float3(0f, 0f, 0f),

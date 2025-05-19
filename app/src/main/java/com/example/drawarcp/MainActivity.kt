@@ -21,7 +21,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             RequirePermission(Manifest.permission.CAMERA, permissionViewModel, this) {
-                ARSceneScreen(viewModel, permissionViewModel)
+                ARSceneScreen(viewModel)
             }
         }
     }

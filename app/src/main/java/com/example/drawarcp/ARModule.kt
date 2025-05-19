@@ -8,6 +8,7 @@ import com.example.drawarcp.domain.interfaces.IARPlacementController
 import com.example.drawarcp.domain.interfaces.IPermissionsRepository
 import com.example.drawarcp.domain.usecases.AddNodeUseCase
 import com.example.drawarcp.domain.usecases.GetPermissionDataUseCase
+import com.example.drawarcp.domain.usecases.RemoveNodeUseCase
 import com.example.drawarcp.domain.usecases.TransformNodeUseCase
 import com.google.android.filament.Engine
 import dagger.Module
@@ -39,6 +40,10 @@ object ARModule {
             }
         )
     }
+
+    @Provides
+    @Singleton
+    fun provideRemoveNodeUseCase(provider: ARNodeProvider) = RemoveNodeUseCase(provider)
 
     @Provides
     @Singleton

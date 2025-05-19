@@ -1,0 +1,29 @@
+material {
+    "name" : "Transparent Textured with Opacity",
+
+    "parameters" : [
+        {
+           "type" : "sampler2d",
+           "name" : "texture"
+        },
+        {
+            "type" : "float",
+            "name" : "opacity"
+        },
+    ],
+    "requires" : [
+        "position",
+        "uv0"
+    ],
+    "shadingModel" : "unlit",
+    "blending" : "transparent",
+    "culling" : "none"
+}
+fragment {
+    void material(inout MaterialInputs material) {
+        prepareMaterial(material);
+        vec4 tex = texture(materialParams_texture, getUV0());
+        tex.a *= materialParams.opacity;
+        material.baseColor = tex;
+    }
+}

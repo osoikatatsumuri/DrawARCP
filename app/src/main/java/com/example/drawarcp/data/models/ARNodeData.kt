@@ -8,7 +8,7 @@ import io.github.sceneview.collision.Vector3
 data class ARNodeData(
     val id: String,
     val pose: Pose,
-    val imageFileLocation: String,
+    val imageSource: ImageSource,
     val scale: Float3,
     val localAngles: Float3,
     val initialWorldQuaternion: Quaternion,

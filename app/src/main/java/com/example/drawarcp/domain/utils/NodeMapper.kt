@@ -1,26 +1,41 @@
 package com.example.drawarcp.domain.utils
 
+import android.content.ContentResolver
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.ImageDecoder
+import android.net.Uri
+import android.os.Build
+import android.provider.MediaStore
+import android.util.Log
 import com.example.drawarcp.data.models.ARNodeData
+import com.example.drawarcp.data.models.ImageSource
 import com.example.drawarcp.domain.models.NodeDomainData
 import com.example.drawarcp.presentation.uistate.nodes.AnchorNodeUIState
-import com.example.drawarcp.presentation.uistate.nodes.INodeUIState
-import com.example.drawarcp.presentation.uistate.nodes.NodeUIState
 import com.google.android.filament.Engine
 import com.google.ar.core.Session
-import dev.romainguy.kotlin.math.Quaternion
 import io.github.sceneview.ar.node.AnchorNode
 import io.github.sceneview.loaders.MaterialLoader
 import io.github.sceneview.math.toFloat3
 import io.github.sceneview.math.toVector3
 import io.github.sceneview.node.ImageNode
+import io.github.sceneview.texture.TextureSampler2D
+import io.github.sceneview.texture.TextureSamplerExternal
+import io.github.sceneview.texture.VideoTexture
+import io.github.sceneview.texture.setBitmap
+import java.io.IOException
 import javax.inject.Inject
 
-class NodeMapper @Inject constructor(private val session: Session, private val engine: Engine, private val materialLoader: MaterialLoader) {
+class NodeMapper @Inject constructor(
+    var session: Session,
+    private val engine: Engine,
+    private val materialLoader: MaterialLoader
+) {
     fun mapToDataLayer(domainNode: NodeDomainData): ARNodeData {
         return ARNodeData(
             id = domainNode.id,
             pose = domainNode.pose,
-            imageFileLocation = domainNode.imageFileLocation,
+            imageSource = domainNode.imageSource,
             scale = domainNode.scale,
             initialWorldQuaternion = domainNode.initialWorldQuaternion,
             localAngles = domainNode.rotationAngles,
@@ -33,7 +48,7 @@ class NodeMapper @Inject constructor(private val session: Session, private val e
         return NodeDomainData(
             id = node.id,
             pose = node.pose,
-            imageFileLocation = node.imageFileLocation,
+            imageSource = node.imageSource,
             scale = node.scale,
             initialWorldQuaternion = node.initialWorldQuaternion,
             rotationAngles = node.localAngles,
@@ -42,18 +57,31 @@ class NodeMapper @Inject constructor(private val session: Session, private val e
         )
     }
 
-    fun mapToUILayer(node: NodeDomainData): AnchorNodeUIState {
-        val anchor = session.createAnchor(node.pose)
+    fun mapToUILayer(context: Context, node: NodeDomainData): AnchorNodeUIState {
+        val anchorNode = AnchorNode(engine = engine, anchor = session.createAnchor(node.pose))
 
-        val anchorNode = AnchorNode(engine = engine, anchor = anchor)
+        val imageNode = when (node.imageSource) {
+            is ImageSource.FileSource -> {
+                ImageNode(
+                    materialLoader = materialLoader,
+                    normal = node.normal,
+                    imageFileLocation = node.imageSource.path
+                )
+            }
 
-        val imageNode = ImageNode(
-            materialLoader = materialLoader,
-            imageFileLocation = node.imageFileLocation,
-            normal = node.normal
-        ).apply {
+            is ImageSource.BitmapSource -> {
+                val bitmap = uriToBitmap(context, node.imageSource.uri)
+
+                ImageNode(
+                    materialLoader = materialLoader,
+                    normal = node.normal,
+                    bitmap = bitmap!!,
+                    textureSampler = TextureSamplerExternal(),
+                )
+            }
+        }.apply {
             scale = node.scale
-            quaternion = node.initialWorldQuaternion * Quaternion.fromEuler(node.rotationAngles)
+            quaternion = node.initialWorldQuaternion
         }
 
         anchorNode.addChildNode(imageNode)
@@ -65,5 +93,27 @@ class NodeMapper @Inject constructor(private val session: Session, private val e
             rotationAngles = node.rotationAngles,
             opacity = node.opacity,
         )
+    }
+}
+
+fun uriToBitmap(context: Context, uri: Uri): Bitmap? {
+    val resolver: ContentResolver = context.contentResolver
+
+    return try {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            val source = ImageDecoder.createSource(resolver, uri)
+
+            val bitmap = ImageDecoder.decodeBitmap(source)
+
+            bitmap.copy(Bitmap.Config.ARGB_8888, true)
+        } else {
+            resolver.openInputStream(uri)?.use { inputStream ->
+                val bitmap = MediaStore.Images.Media.getBitmap(resolver, uri)
+                bitmap.copy(Bitmap.Config.ARGB_8888, true)
+            }
+        }
+    } catch (e: IOException) {
+        Log.e("BitmapLoader", "Failed to load bitmap from URI", e)
+        null
     }
 }

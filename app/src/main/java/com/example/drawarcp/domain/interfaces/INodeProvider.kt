@@ -6,4 +6,5 @@ interface INodeProvider {
     fun updateNode(node: ARNodeData)
     fun getNodeById(id: String): Result<ARNodeData>
     fun registerNode(node: ARNodeData)
+    fun deleteNode(nodeId: String)
 }

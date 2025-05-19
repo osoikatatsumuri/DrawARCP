@@ -11,10 +11,6 @@ class PermissionRepositoryImpl(): IPermissionsRepository {
             name = android.Manifest.permission.CAMERA,
             rationaleText = "Camera is needed to take photos or detect the environment."
         ),
-        android.Manifest.permission.ACCESS_FINE_LOCATION to PermissionData(
-            name = android.Manifest.permission.ACCESS_FINE_LOCATION,
-            rationaleText = "Location is needed to find nearby devices."
-        )
     )
 
     override fun getPermission(permissionName: String): Result<PermissionData> {

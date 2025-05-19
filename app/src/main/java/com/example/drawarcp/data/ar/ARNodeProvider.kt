@@ -18,6 +18,12 @@ class ARNodeProvider: INodeProvider {
         }
     }
 
+    override fun deleteNode(nodeId: String) {
+        _nodes.update { nodes ->
+            nodes.filter { it.id != nodeId }
+        }
+    }
+
     override fun updateNode(node: ARNodeData) {
         _nodes.update { nodes ->
             nodes.map { if (it.id == node.id) node else it}
