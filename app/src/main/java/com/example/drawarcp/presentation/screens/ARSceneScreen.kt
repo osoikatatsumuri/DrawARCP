@@ -1,27 +1,12 @@
 package com.example.drawarcp.presentation.screens
 
 import android.annotation.SuppressLint
-import android.content.Context
-import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
-import android.graphics.ImageDecoder
-import android.hardware.camera2.CameraAccessException
-import android.hardware.camera2.CameraCharacteristics
-import android.hardware.camera2.CameraManager
-import android.media.Image
 import android.net.Uri
 import android.os.Build
-import android.provider.MediaStore
 import android.util.Log
-import android.view.Surface
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.ActivityResult
-import androidx.activity.result.ActivityResultLauncher
-import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
-import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,7 +21,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.ButtonDefaults
@@ -44,7 +28,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
@@ -53,15 +36,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.currentRecomposeScope
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -70,21 +50,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import androidx.core.graphics.decodeBitmap
-import androidx.core.net.toFile
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.drawarcp.data.ar.transformation.TransformationType
-import com.example.drawarcp.data.models.ImageSource
-import com.example.drawarcp.presentation.RequirePermission
 import com.example.drawarcp.presentation.uistate.nodes.AnchorNodeUIState
 import com.example.drawarcp.presentation.viewmodels.ARSceneViewModel
-import com.example.drawarcp.presentation.viewmodels.PermissionsViewModel
 import com.google.ar.core.CameraConfig
 import com.google.ar.core.CameraConfigFilter
 import com.google.ar.core.Config
-import com.google.ar.core.Frame
 import com.google.ar.core.Session
-import com.google.ar.core.TrackingState
 import dev.romainguy.kotlin.math.Float3
 import io.github.sceneview.ar.ARScene
 import io.github.sceneview.ar.rememberARCameraNode
@@ -96,8 +69,6 @@ import io.github.sceneview.rememberModelLoader
 import io.github.sceneview.rememberOnGestureListener
 import io.github.sceneview.rememberView
 import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.debounce
 import java.util.EnumSet
 
 @SuppressLint("NewApi")
@@ -157,6 +128,7 @@ fun ARSceneScreen(viewModel: ARSceneViewModel) {
     LaunchedEffect(arSession) {
         arSession?.let {
             viewModel.initARDependencies(
+                context = context,
                 session = it,
                 engine = engine,
                 materialLoader = materialLoader
@@ -365,16 +337,6 @@ fun TransformNodeSheet(
 
     var rotationAngles by remember(nodeSelected.id) { mutableStateOf(nodeSelected.rotationAngles) }
 
-    val debouncedOpacity by rememberUpdatedState(opacity)
-
-    LaunchedEffect(debouncedOpacity) {
-        snapshotFlow { debouncedOpacity }
-            .debounce(100)
-            .collectLatest {
-                onOpacityChange(it)
-            }
-    }
-
     var selectedAxis by remember {mutableStateOf(Pair("X", Vector3(1f, 0f, 0f)))}
 
     val rotationAxes = listOf(
@@ -443,6 +405,7 @@ fun TransformNodeSheet(
                 value = opacity.toFloat(),
                 onValueChange = {
                     opacity = it.toInt()
+                    onOpacityChange(opacity)
                 },
                 valueRange = 0f..255f
             )

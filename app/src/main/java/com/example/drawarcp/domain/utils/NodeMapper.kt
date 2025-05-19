@@ -13,16 +13,14 @@ import com.example.drawarcp.data.models.ImageSource
 import com.example.drawarcp.domain.models.NodeDomainData
 import com.example.drawarcp.presentation.uistate.nodes.AnchorNodeUIState
 import com.google.android.filament.Engine
+import com.google.android.filament.MaterialInstance
 import com.google.ar.core.Session
 import io.github.sceneview.ar.node.AnchorNode
 import io.github.sceneview.loaders.MaterialLoader
 import io.github.sceneview.math.toFloat3
 import io.github.sceneview.math.toVector3
 import io.github.sceneview.node.ImageNode
-import io.github.sceneview.texture.TextureSampler2D
 import io.github.sceneview.texture.TextureSamplerExternal
-import io.github.sceneview.texture.VideoTexture
-import io.github.sceneview.texture.setBitmap
 import java.io.IOException
 import javax.inject.Inject
 
@@ -57,7 +55,7 @@ class NodeMapper @Inject constructor(
         )
     }
 
-    fun mapToUILayer(context: Context, node: NodeDomainData): AnchorNodeUIState {
+    fun mapToUILayer(context: Context, node: NodeDomainData, materialInstance: MaterialInstance): AnchorNodeUIState {
         val anchorNode = AnchorNode(engine = engine, anchor = session.createAnchor(node.pose))
 
         val imageNode = when (node.imageSource) {
@@ -83,6 +81,11 @@ class NodeMapper @Inject constructor(
             scale = node.scale
             quaternion = node.initialWorldQuaternion
         }
+
+        materialInstance.setParameter("texture", imageNode.texture, TextureSamplerExternal())
+        materialInstance.setParameter("opacity", node.opacity / 255f)
+
+        imageNode.materialInstance = materialInstance
 
         anchorNode.addChildNode(imageNode)
 

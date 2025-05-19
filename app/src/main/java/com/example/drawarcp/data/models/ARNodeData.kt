@@ -13,5 +13,5 @@ data class ARNodeData(
     val localAngles: Float3,
     val initialWorldQuaternion: Quaternion,
     val normal: Vector3,
-    val alpha: Int,
+    val alpha: Int = 255,
 )

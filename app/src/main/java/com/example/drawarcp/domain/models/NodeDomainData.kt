@@ -13,5 +13,5 @@ data class NodeDomainData(
     val rotationAngles: Float3,
     val initialWorldQuaternion: Quaternion,
     val normal: Float3,
-    val opacity: Int
+    val opacity: Int = 255
 )

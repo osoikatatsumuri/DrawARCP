@@ -9,7 +9,7 @@ material {
         {
             "type" : "float",
             "name" : "opacity"
-        },
+        }
     ],
     "requires" : [
         "position",
@@ -23,7 +23,9 @@ fragment {
     void material(inout MaterialInputs material) {
         prepareMaterial(material);
         vec4 tex = texture(materialParams_texture, getUV0());
-        tex.a *= materialParams.opacity;
+        float finalAlpha = tex.a * materialParams.opacity;
+        tex.rgb *= finalAlpha;
+        tex.a *= finalAlpha;
         material.baseColor = tex;
     }
 }
