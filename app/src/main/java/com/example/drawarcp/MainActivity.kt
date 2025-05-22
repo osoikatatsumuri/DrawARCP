@@ -5,9 +5,9 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
-import com.example.drawarcp.presentation.viewmodels.ARSceneViewModel
-import com.example.drawarcp.presentation.screens.ARSceneScreen
 import com.example.drawarcp.presentation.RequirePermission
+import com.example.drawarcp.presentation.viewmodels.ARSceneViewModel
+import com.example.drawarcp.presentation.screens.arscene.ARSceneScreen
 import com.example.drawarcp.presentation.viewmodels.PermissionsViewModel
 import dagger.hilt.android.AndroidEntryPoint
 

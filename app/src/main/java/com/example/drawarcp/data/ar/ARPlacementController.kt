@@ -38,12 +38,7 @@ class ARPlacementController: IARPlacementController {
         val scalarProduct = Vector3.dot(normalVector, Vector3.up()).absoluteValue
 
         val quaternion = if (scalarProduct < 0.1f) {
-            val planeUp = Vector3.cross(normalVector.negated().normalized(), Vector3.up())
-                .normalized()
-
-            val planeForward = Vector3.cross(planeUp, normalVector.negated().normalized()).normalized()
-
-            io.github.sceneview.collision.Quaternion.lookRotation(planeForward, planeUp)
+            io.github.sceneview.collision.Quaternion.lookRotation(normalVector.negated(), Vector3.up())
         } else {
            io.github.sceneview.collision.Quaternion.lookRotation(normalVector.negated(), Vector3.forward())
         }

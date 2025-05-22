@@ -1,5 +1,6 @@
-package com.example.drawarcp.presentation.screens
+package com.example.drawarcp.presentation.screens.arscene
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -7,12 +8,14 @@ import android.os.Build
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -21,13 +24,17 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material3.BottomAppBar
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
@@ -44,14 +51,20 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.drawarcp.data.ar.transformation.TransformationType
+import com.example.drawarcp.presentation.components.VerticalSlider
 import com.example.drawarcp.presentation.uistate.nodes.AnchorNodeUIState
 import com.example.drawarcp.presentation.viewmodels.ARSceneViewModel
 import com.google.ar.core.CameraConfig
@@ -70,6 +83,7 @@ import io.github.sceneview.rememberOnGestureListener
 import io.github.sceneview.rememberView
 import kotlinx.coroutines.FlowPreview
 import java.util.EnumSet
+
 
 @SuppressLint("NewApi")
 @Composable
@@ -95,10 +109,12 @@ fun ARSceneScreen(viewModel: ARSceneViewModel) {
     val childNodes = sceneState.nodesItems.map { it.node }
     var currentImageUri by remember {mutableStateOf<Uri?>(null)}
 
+    val planePlacementState = sceneState.planePlacementUIState
+
     val storagePermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        android.Manifest.permission.READ_MEDIA_IMAGES
+        Manifest.permission.READ_MEDIA_IMAGES
     } else {
-        android.Manifest.permission.READ_EXTERNAL_STORAGE
+        Manifest.permission.READ_EXTERNAL_STORAGE
     }
 
     val pickMedia = rememberLauncherForActivityResult(contract = ActivityResultContracts.GetContent()) { uri ->
@@ -139,51 +155,49 @@ fun ARSceneScreen(viewModel: ARSceneViewModel) {
     Scaffold(
         bottomBar = {
             BottomAppBar(
-                containerColor = Color.White.copy(alpha = 0.95f),
+                containerColor = Color.Transparent,
                 tonalElevation = 4.dp,
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    TextButton(
-                        onClick = {
-                            handleImagePick()
-                        },
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.textButtonColors(
-                            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                            contentColor = MaterialTheme.colorScheme.primary
-                        ),
+                if (planePlacementState.isPlacement) {
+                    Box(
                         modifier = Modifier
-                            .height(48.dp)
-                            .weight(1f)
+                            .fillMaxWidth()
+                            .height(200.dp)
+                            .padding(16.dp)
                     ) {
-                        Text(text = "Выбрать новое изображение", style = MaterialTheme.typography.bodyMedium)
+                        Row(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            IconButton(onClick = { viewModel.confirmPlanePlacement() }) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = "Подтвердить"
+                                )
+                            }
+
+                            IconButton(onClick = { viewModel.closePlanePlacement() }) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Отменить"
+                                )
+                            }
+                        }
+
                     }
-
-                    Spacer(modifier = Modifier.width(12.dp))
-
-                    TextButton(
-                        onClick = {
+                } else {
+                    ARBottomBar(
+                        onPickImage = { handleImagePick() },
+                        onAddPlane = { viewModel.addPlane() },
+                        onAddImage = {
                             viewModel.addNode(context, widthPixels / 2f, heightPixels / 2f, currentImageUri)
-                        },
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.textButtonColors(
-                            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                            contentColor = MaterialTheme.colorScheme.primary
-                        ),
-                        modifier = Modifier
-                            .height(48.dp)
-                            .weight(1f)
-                    ) {
-                        Text(text = "Добавить изображение", style = MaterialTheme.typography.bodyMedium)
-                    }
+                        }
+                    )
                 }
             }
-        },
+        }
     ) { padding ->
         Box(
             modifier = Modifier
@@ -247,6 +261,8 @@ fun ARSceneScreen(viewModel: ARSceneViewModel) {
 
                     config.instantPlacementMode = Config.InstantPlacementMode.DISABLED
 
+                    config.updateMode = Config.UpdateMode.BLOCKING
+
                     config.planeFindingMode = Config.PlaneFindingMode.HORIZONTAL_AND_VERTICAL
 
                     config.lightEstimationMode =
@@ -261,6 +277,27 @@ fun ARSceneScreen(viewModel: ARSceneViewModel) {
                 ),
                 childNodes = childNodes,
             )
+
+            if (sceneState.planePlacementUIState.isPlacement) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .align(Alignment.CenterEnd)
+                        .padding(end = 16.dp),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    VerticalSlider(value = sceneState.planePlacementUIState.currentDistance, onValueChange = {
+                        viewModel.updatePlanePlacementDistance(it)
+                    }, valueRange = 0f..5f, modifier = Modifier.width(200.dp).height(50.dp))
+
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "${"%.2f".format(sceneState.planePlacementUIState.currentDistance)} м",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
 
             if (sheetVisible && selectedNodeId != null) {
                 TransformNodeSheet(
@@ -319,114 +356,4 @@ fun LocalOrientationAxisChip(rotationAxis: Pair<String, Vector3>, onSelected: ()
             null
         },
     )
-}
-
-@OptIn(ExperimentalMaterial3Api::class, FlowPreview::class)
-@Composable
-fun TransformNodeSheet(
-    onDismiss: () -> Unit,
-    nodeSelected: AnchorNodeUIState,
-    onScaleChange: (Float) -> Unit,
-    onOpacityChange: (Int) -> Unit,
-    onRotationChange: (Float3) -> Unit,
-    onNodeDelete: (String) -> Unit,
-) {
-
-    var scale by remember(nodeSelected.id) { mutableFloatStateOf(nodeSelected.scale.x) }
-    var opacity by remember(nodeSelected.id) { mutableIntStateOf(nodeSelected.opacity) }
-
-    var rotationAngles by remember(nodeSelected.id) { mutableStateOf(nodeSelected.rotationAngles) }
-
-    var selectedAxis by remember {mutableStateOf(Pair("X", Vector3(1f, 0f, 0f)))}
-
-    val rotationAxes = listOf(
-        Pair<String, Vector3>("X", Vector3(1f, 0f, 0f)),
-        Pair<String, Vector3>("Y", Vector3(0f, 1f, 0f)),
-        Pair<String, Vector3>("Z", Vector3(0f, 0f, 1f)),
-    )
-
-    ModalBottomSheet(
-        onDismissRequest = onDismiss
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text("Трансформация объекта", modifier = Modifier.padding(bottom = 8.dp))
-
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                rotationAxes.forEach { axis ->
-                    LocalOrientationAxisChip(axis, onSelected = {
-                        selectedAxis = axis
-                    })
-                }
-            }
-
-            Text("Масштаб: ${"%.2f".format(scale)}")
-            Slider(
-                value = scale,
-                onValueChange = {
-                    scale = it
-                    onScaleChange(it)
-                },
-                valueRange = 0.1f..3f
-            )
-
-            Text(
-                "Rotation: ${
-                    "%.0f".format(
-                        rotationAngles.toFloatArray()[ when (selectedAxis.first) {
-                            "X" -> 0
-                            "Y" -> 1
-                            else -> 2
-                        } ]
-                    )
-                }° on ${selectedAxis.first}"
-            )
-
-            Slider(
-                value = rotationAngles.toFloatArray()[ when (selectedAxis.first) {
-                    "X" -> 0
-                    "Y" -> 1
-                    else -> 2
-                } ],
-                onValueChange = { newValue ->
-                    val (x, y, z) = rotationAngles.toFloatArray()
-                    val updated = when (selectedAxis.first) {
-                        "X" -> Float3(newValue, y, z)
-                        "Y" -> Float3(x, newValue, z)
-                        else -> Float3(x, y, newValue)
-                    }
-                    rotationAngles = updated
-                    onRotationChange(updated)
-                },
-                valueRange = 0f..360f
-            )
-
-            Text("Прозрачность: $opacity")
-            Slider(
-                value = opacity.toFloat(),
-                onValueChange = {
-                    opacity = it.toInt()
-                    onOpacityChange(opacity)
-                },
-                valueRange = 0f..255f
-            )
-
-            TextButton(
-                onClick = {
-                    onDismiss()
-
-                    onNodeDelete(nodeSelected.id)
-                },
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.textButtonColors(
-                    containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                    contentColor = MaterialTheme.colorScheme.primary
-                ),
-                modifier = Modifier
-                    .height(6.dp)
-                    .weight(1f)
-            ) {
-                Text(text = "Удалить узел", style = MaterialTheme.typography.bodyMedium)
-            }
-        }
-    }
 }
